@@ -1,0 +1,8 @@
+/config/config-override.ini
+/.idea/misc.xml
+/ModbusyClient.iml
+/.idea/modules.xml
+/.idea/php.xml
+/.idea/vcs.xml
+/composer.json
+/.idea/.gitignore
