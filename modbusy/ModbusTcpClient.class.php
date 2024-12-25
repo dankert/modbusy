@@ -4,6 +4,8 @@ namespace modbusy;
 
 
 use modbusy\request\MultibyteRequest;
+use modbusy\request\MultipleHoldingRegistersReader;
+use modbusy\request\MultipleHoldingRegistersWriter;
 use modbusy\request\Request;
 
 /**
@@ -67,12 +69,18 @@ class ModbusTcpClient
     }
 
 
+    /**
+     * @return MultipleHoldingRegistersReader
+     */
     public function readMultipleHoldingRegisters() {
-        return $this->initializeRequest(new MultibyteRequest(), 3);
+        return $this->initializeRequest(new MultipleHoldingRegistersReader());
     }
 
+    /**
+     * @return MultipleHoldingRegistersWriter
+     */
     public function writeMultipleHoldingRegisters() {
-        return $this->initializeRequest( new MultibyteRequest(),16);
+        return $this->initializeRequest( new MultipleHoldingRegistersWriter());
     }
 
 
@@ -86,9 +94,8 @@ class ModbusTcpClient
     }
 
 
-    protected function initializeRequest(Request $request, int $fc)
+    protected function initializeRequest(Request $request)
     {
-        $request->setFunctionCode($fc);
         $request->setSocket($this->socket );
         $request->setLog( $this->log );
         return $request;

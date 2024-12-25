@@ -43,14 +43,14 @@ class Request
         return $this;
     }
 
-    public function setAddress($address )
+    public function setUnit($unitId )
     {
-        $this->address = $address;
+        $this->unitId = $unitId;
         return $this;
     }
 
     public $transactionId = 1024; // optional
-    public $address = 1;
+    public $unitId = 1;
 
     const PROTOCOL_IDENTIFIER = "\x00\x00";
 
@@ -78,33 +78,29 @@ class Request
     }
 
 
-    function hex_dump($data, $newline="\n")
+    protected static function hexDump( $data, $newline="\n")
     {
-        static $from = '';
-        static $to = '';
+        $width =  16; # number of bytes per line
+        $pad   = '.'; # padding for non-visible characters
 
-        static $width = 16; # number of bytes per line
+        $from   = '';
+        $to     = '';
+        $output = '';
 
-        static $pad = '.'; # padding for non-visible characters
-
-        if ($from==='')
+        for ($i=0; $i<=0xFF; $i++)
         {
-            for ($i=0; $i<=0xFF; $i++)
-            {
-                $from .= chr($i);
-                $to .= ($i >= 0x20 && $i <= 0x7E) ? chr($i) : $pad;
-            }
+            $from .= chr($i);
+            $to   .= ($i >= 0x20 && $i <= 0x7E) ? chr($i) : $pad;
         }
 
-        $hex = str_split(bin2hex($data), $width*2);
+        $hex   = str_split(bin2hex($data), $width*2);
         $chars = str_split(strtr($data, $from, $to), $width);
 
-        $offset = 0;
-        foreach ($hex as $i => $line)
-        {
-            echo sprintf('%6X',$offset).' : '.implode(' ', str_split($line,2)) . ' [' . $chars[$i] . ']' . $newline;
-            $offset += $width;
-        }
+        foreach ($hex as $i=>$line)
+            $output .=
+                implode('  ',array_pad(str_split($chars[$i]),16,' ')     ) . '   ['.str_pad($chars[$i],16).']' . $newline .
+                implode(' ' ,array_pad(str_split($line ,2),16,'  ') ) . $newline;
+        return $output;
     }
 
     public function setLog(Closure $log)
@@ -113,13 +109,21 @@ class Request
     }
 
 
-    protected function logHex()
+    protected function logHex( $text,$value )
     {
-
+        $this->log(  $text.': HEX:'.bin2hex($value).' ('.strlen($value).' bytes)');
     }
 
-    protected function logHexDump()
+    protected function logHexDump($text,$value)
     {
+        $this->log(  $text.': '."\n".self::hexDump($value));
+    }
 
+
+
+    public function log( $log )
+    {
+        if   ( $this->log )
+            call_user_func($this->log,$log );
     }
 }

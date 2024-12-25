@@ -2,7 +2,7 @@
 namespace modbusy\request;
 
 
-class MultibyteRequest extends  Request
+abstract class MultibyteRequest extends  Request
 {
     const ERRORS = [
 1 =>	'Illegal Function 	Function code received in the query is not recognized or allowed by server',
@@ -17,16 +17,13 @@ class MultibyteRequest extends  Request
 11=> 	'Gateway Target Device Failed to Respond',
     ];
 
-    public function request($command )
+    protected function request($command )
     {
-        //stream_set_timeout(5);
-        echo "sending ...\n";
-        flush();
+        $this->log("Sending");
         $this->transactionId = rand(0,65535);
         $transaction = pack("n",$this->transactionId);
 
-        echo "sending transaction...".bin2hex($transaction)."\n";
-        flush();
+        $this->logHex("Sending transaction",$transaction);
         //  When sending a Modbus TCP frame, the frame is split into 6 different sections:
         //1)      Transaction Identifier ( 2 bytes )
         //2)      Protocol Identifier (2 bytes)
@@ -39,49 +36,45 @@ class MultibyteRequest extends  Request
             throw new \InvalidArgumentException("could not write transaction id to socket");
 
         $bytes = fwrite($this->socket,self::PROTOCOL_IDENTIFIER);
-        echo "sending proto...".bin2hex(self::PROTOCOL_IDENTIFIER)."\n";
+        $this->logHex("Sending protocol",self::PROTOCOL_IDENTIFIER);
         if   ( $bytes !== 2 )
             throw new \InvalidArgumentException("could not write 00 to socket");
 
         // length
         $length = strlen($command)+2;
-        echo "sending length...".bin2hex(pack("n",$length))."\n";
+        $this->logHex("sending length",pack("n",$length));
         fwrite($this->socket,pack("n",$length) ); // 2 bytes
 
-        echo "sending unit...".bin2hex(pack("C",$this->address))."\n";
-        fwrite($this->socket,pack("C",$this->address) ); // unit identifier 1 byte
+        $this->logHex("sending unit",pack("C",$this->unitId));
+        fwrite($this->socket,pack("C",$this->unitId) ); // unit identifier 1 byte
 
-        echo "sending func...".bin2hex(pack("C",$this->functionCode))."\n";
+        $this->logHex("sending function code",pack("C",$this->functionCode));
         fwrite($this->socket,pack("C",$this->functionCode) );
 
-        echo "sending command...\n";
-        $this->hex_dump($command);
+        $this->logHexDump( "sending command",$command);
         fwrite($this->socket,$command );
 
-        echo "now getting data...";
-        flush();
+        $this->log("now getting data...");
         $transactionResponse = fgets($this->socket,2+1);
-        echo "...transaction:".bin2hex($transactionResponse)." [".strlen($transactionResponse).']';
+        $this->logHex("Transaction",$transactionResponse);
         if   ( $transaction != $transactionResponse )
-            throw new \InvalidArgumentException("transaction '".bin2hex($transactionResponse)."' does not match '".bin2hex($transaction)."'");
-        flush();
+            throw new \InvalidArgumentException("transaction from modbus slave '".bin2hex($transactionResponse)."' does not match ours '".bin2hex($transaction)."'");
         $protocol = fgets($this->socket,2+1);
         if   ( $protocol != self::PROTOCOL_IDENTIFIER )
             throw new \InvalidArgumentException("protocol does not match");
-        echo "...protocol:".bin2hex($protocol);
-        flush();
+        $this->logHex("Protocol",$protocol);
         $length = unpack("n",fgets($this->socket,2+1))[1];
-        echo "...length:".$length."\n";
-        flush();
+        $this->log("Response-Length ".$length.' bytes');
         $response = fgets($this->socket,$length+1);
 
+        $unitResponse = unpack("C",substr($response,0,1))[1];
+        $this->log("Unit ".$unitResponse);
 
-        $addressResponse = unpack("C",substr($response,0,1))[1];
-        echo "...address:$addressResponse\n";
         $functionResponse = unpack("C",substr($response,1,1))[1];
-        echo "...function code:".$functionResponse."\n";
-        $data = substr($response,2);
-        echo "...result:\n"; $this->hex_dump($data);
+        $this->log("Function code ".$functionResponse);
+
+        $data = substr($response,2); // truncate unitId and functionCode (1+1=2 bytes)
+        $this->logHexDump("Result",$data);
 
         if   ( $functionResponse == $this->functionCode ) {
             // success
@@ -105,5 +98,4 @@ class MultibyteRequest extends  Request
             throw new \InvalidArgumentException("server error: function in response is ".$functionResponse." and not the called function ".$function.". Data is '".bin2hex($data)."'");
         }
     }
-
 }

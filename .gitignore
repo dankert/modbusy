@@ -1,4 +1,4 @@
-/config/config-override.ini
+/config/config-helios-kwl-override.ini
 /.idea/misc.xml
 /ModbusyClient.iml
 /.idea/modules.xml
@@ -6,3 +6,5 @@
 /.idea/vcs.xml
 /composer.json
 /.idea/.gitignore
+/config/config-fronius-symo-override.ini
+/modbusy.iml
